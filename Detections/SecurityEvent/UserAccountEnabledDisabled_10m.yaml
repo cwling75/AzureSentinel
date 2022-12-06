@@ -8,8 +8,11 @@ requiredDataConnectors:
   - connectorId: SecurityEvents
     dataTypes:
       - SecurityEvent
+  - connectorId: WindowsSecurityEvents
+    dataTypes:
+      - SecurityEvent
 queryFrequency: 1d
-queryPeriod: 1d
+queryPeriod: 25h
 triggerOperator: gt
 triggerThreshold: 0
 tactics:
@@ -22,19 +25,20 @@ query: |
   let timeframe = 1d;
   let spanoftime = 10m;
   let threshold = 0;
-  SecurityEvent 
-  | where TimeGenerated > ago(2*timeframe) 
+  SecurityEvent
+  | where TimeGenerated > ago(timeframe+spanoftime)
   // A user account was enabled
   | where EventID == 4722
   | where AccountType =~ "User"
+  | where TargetAccount !hassuffix "$"
   | project EnableTime = TimeGenerated, EnableEventID = EventID, EnableActivity = Activity, Computer, UserPrincipalName, 
   AccountUsedToEnable = SubjectAccount, SIDofAccountUsedToEnable = SubjectUserSid, TargetAccount = tolower(TargetAccount), TargetSid
   | join kind= inner (
     SecurityEvent
-    | where TimeGenerated > ago(timeframe) 
-    // A user account was disabled 
+    | where TimeGenerated > ago(timeframe)
+    // A user account was disabled
     | where EventID == 4725
-  | where AccountType == "User"
+  | where AccountType =~ "User"
   | project DisableTime = TimeGenerated, DisableEventID = EventID, DisableActivity = Activity, Computer, UserPrincipalName, 
   AccountUsedToDisable = SubjectAccount, SIDofAccountUsedToDisable = SubjectUserSid, TargetAccount = tolower(TargetAccount), TargetSid
   ) on Computer, TargetAccount
@@ -49,9 +53,11 @@ entityMappings:
     fieldMappings:
       - identifier: FullName
         columnName: AccountCustomEntity
-      - identifier: SID
+      - identifier: Sid
         columnName: SIDofAccountUsedToEnable
   - entityType: Host
     fieldMappings:
       - identifier: FullName
         columnName: HostCustomEntity
+version: 1.0.1
+kind: Scheduled

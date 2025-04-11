@@ -1,3 +1,4 @@
 azure-functions
 aiohttp==3.7.4.post0
 azure-storage-file-share==12.4.1
+werkzeug>=3.0.6 # not directly required, pinned by Snyk to avoid a vulnerability
